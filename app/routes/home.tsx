@@ -7,34 +7,7 @@ import {
 import React, { useState, useRef, useEffect } from "react";
 import * as YouTubeImport from "react-youtube";
 const YouTube = YouTubeImport.default;
-
-interface Song {
-  id: string;
-  youtubeId: string;
-  track: string;
-  artist: string;
-}
-
-const songs: Song[] = [
-  {
-    id: "1",
-    youtubeId: "v=VoEsEC2CLgE",
-    track: "Just The Two Of Us",
-    artist: "Bill Withers",
-  },
-  {
-    id: "2",
-    youtubeId: "v=XXx6RDzR6eM",
-    track: "Lets Stay Together",
-    artist: "Al Green",
-  },
-  {
-    id: "3",
-    youtubeId: "v=lIU5YMp-l2A",
-    track: "Free Treasure",
-    artist: "Adrianne Lenker",
-  },
-];
+import songs from "~/songs";
 
 const App: React.FC = () => {
   const [currentTrack, setCurrentTrack] = useState(0);
@@ -42,8 +15,16 @@ const App: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const playerRef = useRef<any>(null);
 
+  // Only run on client
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // On mount, cue the initial track without autoplay
+  useEffect(() => {
+    if (playerRef.current) {
+      playerRef.current.cueVideoById(songs[currentTrack].youtubeId);
+    }
   }, []);
 
   const onReady = (event: any): void => {
@@ -51,7 +32,7 @@ const App: React.FC = () => {
   };
 
   const opts = {
-    height: "0",
+    height: "0", // hide video, we only want the audio
     width: "0",
     playerVars: {
       autoplay: 0,
@@ -81,24 +62,21 @@ const App: React.FC = () => {
       newTrack = songs.length - 1;
     }
     setCurrentTrack(newTrack);
+    setPlaying(true);
     if (playerRef.current) {
+      // Force the player to stop the current video
+      playerRef.current.stopVideo();
+      // Load the new video by its ID
       playerRef.current.loadVideoById(songs[newTrack].youtubeId);
-      if (playing) {
+      // Add a longer delay to ensure the new video is fully loaded before calling play
+      setTimeout(() => {
         playerRef.current.playVideo();
-      }
+      }, 750);
     }
   };
 
-  useEffect(() => {
-    if (playerRef.current) {
-      playerRef.current.loadVideoById(songs[currentTrack].youtubeId);
-      if (playing) {
-        playerRef.current.playVideo();
-      }
-    }
-  }, [currentTrack]);
-
   const onStateChange = (event: any): void => {
+    // When video ends (event.data === 0), auto-advance
     if (event.data === 0) {
       changeTrack(1);
     }
